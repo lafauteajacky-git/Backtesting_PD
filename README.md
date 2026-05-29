@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Backtesting PD 12 mois
 
 Démonstrateur Python / Streamlit de backtesting réglementaire PD 12 mois.
@@ -45,3 +46,6 @@ les scénarios de démonstration. Les fichiers CSV générés localement dans
 ```powershell
 python -m pytest
 ```
+=======
+# Backtesting_PD
+>>>>>>> 7faa90333fbf55f44ce6c02d774d7cfc1892052a
