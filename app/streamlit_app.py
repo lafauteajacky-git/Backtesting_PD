@@ -1,6 +1,7 @@
 ﻿from pathlib import Path
 
 import base64
+import html
 
 import pandas as pd
 import plotly.express as px
@@ -464,6 +465,136 @@ def inject_auria_theme() -> None:
           box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
         }
 
+        .auria-hero-card .metric-line {
+          display: flex;
+          align-items: baseline;
+          justify-content: space-between;
+          gap: 14px;
+          padding: 10px 0;
+          border-bottom: 1px solid rgba(255,255,255,0.12);
+        }
+
+        .auria-hero-card .metric-line:last-child {
+          border-bottom: 0;
+        }
+
+        .auria-hero-card .metric-label {
+          color: rgba(255,255,255,0.66);
+          font-size: 0.80rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .auria-hero-card .metric-value {
+          color: white;
+          font-size: 1rem;
+          font-weight: 900;
+          text-align: right;
+        }
+
+        .auria-hero h1 {
+          color: white !important;
+          font-size: clamp(2.15rem, 4.2vw, 4.35rem) !important;
+          line-height: 1.01 !important;
+          margin: 0 0 12px 0 !important;
+          max-width: 980px;
+        }
+
+        .auria-hero .lead {
+          max-width: 860px;
+          color: rgba(255,255,255,0.82);
+          font-size: 1.02rem;
+          line-height: 1.65;
+        }
+
+        .auria-run {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          margin-top: 16px;
+          padding: 9px 13px;
+          border: 1px solid rgba(255,255,255,0.22);
+          border-radius: 999px;
+          background: rgba(255,255,255,0.08);
+          color: rgba(255,255,255,0.92);
+          font-size: 0.82rem;
+          font-weight: 850;
+        }
+
+        .auria-section-header {
+          border: 1px solid var(--auria-line);
+          background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(255,250,245,0.74));
+          border-radius: 24px;
+          padding: 18px 20px;
+          margin: 8px 0 18px 0;
+          box-shadow: var(--shadow-card);
+        }
+
+        .auria-section-header h2,
+        .auria-section-header h3 {
+          margin: 0 0 6px 0 !important;
+          color: var(--auria-navy) !important;
+        }
+
+        .auria-section-header p {
+          margin: 0;
+          color: var(--auria-grey);
+          line-height: 1.55;
+        }
+
+        .auria-kpi-card {
+          min-height: 128px;
+          border: 1px solid var(--auria-line);
+          border-radius: 20px;
+          background: rgba(255,255,255,0.88);
+          box-shadow: var(--shadow-card);
+          padding: 18px 18px 14px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+        }
+
+        .auria-kpi-label {
+          color: var(--auria-grey);
+          font-size: 0.76rem;
+          font-weight: 900;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+
+        .auria-kpi-value {
+          color: var(--auria-navy);
+          font-size: clamp(1.45rem, 2.1vw, 2.18rem);
+          line-height: 1.04;
+          font-weight: 900;
+          overflow-wrap: anywhere;
+          margin-top: 12px;
+        }
+
+        .auria-kpi-caption {
+          color: var(--auria-grey);
+          font-size: 0.82rem;
+          line-height: 1.35;
+          margin-top: 10px;
+        }
+
+        div[data-testid="stPlotlyChart"] {
+          border: 1px solid var(--auria-line);
+          border-radius: 20px;
+          background: rgba(255,255,255,0.82);
+          box-shadow: var(--shadow-card);
+          padding: 12px;
+        }
+
+        div[data-testid="stVerticalBlockBorderWrapper"] {
+          border: 1px solid var(--auria-line) !important;
+          border-radius: 26px !important;
+          background: rgba(255,255,255,0.78) !important;
+          box-shadow: var(--shadow-card) !important;
+          padding: 8px !important;
+        }
+
         .auria-chips {
           display: flex;
           flex-wrap: wrap;
@@ -751,6 +882,35 @@ def format_percent(value: float) -> str:
 
 def format_number(value: float) -> str:
     return "" if pd.isna(value) else f"{value:,.2f}".replace(",", " ")
+
+
+def render_kpi_card(label: str, value: str, caption: str = "") -> None:
+    """Render a stable Auria-style KPI card for the executive dashboard."""
+    st.markdown(
+        f"""
+        <div class="auria-kpi-card">
+          <div class="auria-kpi-label">{html.escape(str(label))}</div>
+          <div class="auria-kpi-value">{html.escape(str(value))}</div>
+          <div class="auria-kpi-caption">{html.escape(str(caption))}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_section_header(title: str, body: str, kicker: str | None = None) -> None:
+    """Render a compact explanatory section header."""
+    kicker_html = f'<div class="auria-kicker" style="color:#f1a986">{html.escape(kicker)}</div>' if kicker else ""
+    st.markdown(
+        f"""
+        <div class="auria-section-header">
+          {kicker_html}
+          <h2>{html.escape(title)}</h2>
+          <p>{html.escape(body)}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def display_rates(frame: pd.DataFrame) -> pd.DataFrame:
@@ -1079,36 +1239,64 @@ def render_scope_presentation(
     expected_observation: str,
     threshold_profile: str,
 ) -> None:
-    """Display the analysed perimeter below the page title."""
+    """Display the analysed perimeter as the main Auria-style hero."""
     years = sorted(observations["observation_year"].dropna().unique().tolist())
     portfolios = sorted(observations["portfolio"].dropna().unique().tolist())
     models = sorted(observations["model_id"].dropna().unique().tolist())
     segments = sorted(observations["segment"].dropna().unique().tolist())
     period_label = f"{years[0]}-{years[-1]}" if years else "Non disponible"
+    default_count = int(observations["default_flag_12m"].fillna(0).sum()) if "default_flag_12m" in observations else 0
+    obs_label = f"{len(observations):,}".replace(",", " ")
+    default_label = f"{default_count:,}".replace(",", " ")
+    portfolio_label = ", ".join(map(str, portfolios)) if portfolios else "NA"
+    model_label = ", ".join(map(str, models[:3])) if models else "NA"
+    if len(models) > 3:
+        model_label += f" +{len(models) - 3}"
+    segment_label = f"{len(segments)} segment(s)" if segments else "NA"
     st.markdown(
         f"""
         <div class="auria-hero">
           <div class="auria-hero-grid">
             <div>
-              <div class="auria-kicker">Périmètre analysé</div>
-              <h2>{scenario_label}</h2>
-              <p>{scenario_description}</p>
-              <p><b style="color:#f7c6ae">À observer :</b> {expected_observation}</p>
+              <div class="auria-kicker">Auria Advisory | Backtesting & Rating Systems</div>
+              <h1>Validation réglementaire PD 12 mois</h1>
+              <p class="lead">
+                Démonstrateur de validation et monitoring des systèmes de notation crédit :
+                qualité des données, population éligible, stabilité RDS, calibration, discrimination,
+                migrations, low-default portfolios et lecture PIT / TTC / Hybrid.
+              </p>
+              <div class="auria-run">Scénario actif : {html.escape(str(scenario_label))}</div>
+              <p><b style="color:#f7c6ae">Contexte :</b> {html.escape(str(scenario_description))}</p>
+              <p><b style="color:#f7c6ae">À observer :</b> {html.escape(str(expected_observation))}</p>
               <div class="auria-chips">
-                <span class="auria-chip">Période {period_label}</span>
-                <span class="auria-chip">Profil {threshold_profile}</span>
-                <span class="auria-chip">{len(observations):,} observations</span>
+                <span class="auria-chip">Période {html.escape(str(period_label))}</span>
+                <span class="auria-chip">Profil seuils {html.escape(str(threshold_profile))}</span>
+                <span class="auria-chip">{obs_label} observations</span>
+                <span class="auria-chip">{default_label} défauts</span>
               </div>
             </div>
             <div class="auria-hero-card">
-              <div class="auria-kicker">Composition</div>
-              <p><b>Portefeuilles</b><br>{', '.join(map(str, portfolios)) or 'NA'}</p>
-              <p><b>Modèles</b><br>{', '.join(map(str, models)) or 'NA'}</p>
-              <p><b>Segments</b><br>{len(segments)} segment(s)</p>
+              <div class="auria-kicker">Périmètre de démonstration</div>
+              <div class="metric-line">
+                <span class="metric-label">Portefeuilles</span>
+                <span class="metric-value">{html.escape(portfolio_label)}</span>
+              </div>
+              <div class="metric-line">
+                <span class="metric-label">Modèles</span>
+                <span class="metric-value">{html.escape(model_label)}</span>
+              </div>
+              <div class="metric-line">
+                <span class="metric-label">Segmentation</span>
+                <span class="metric-value">{html.escape(segment_label)}</span>
+              </div>
+              <div class="metric-line">
+                <span class="metric-label">Usage</span>
+                <span class="metric-value">RDV client / validation modèle</span>
+              </div>
             </div>
           </div>
         </div>
-        """.replace(",", " "),
+        """,
         unsafe_allow_html=True,
     )
 
@@ -2062,8 +2250,6 @@ def main() -> None:
     configure_plotly_theme()
     inject_auria_theme()
     render_auria_topbar()
-    st.title("Validation réglementaire PD & systèmes de notation crédit")
-    render_app_context_intro()
 
     raw_thresholds = load_thresholds(CONFIG_PATH)
     profile_names = sorted(raw_thresholds.get("threshold_profiles", {"standard": {}}))
@@ -2124,14 +2310,6 @@ def main() -> None:
         st.stop()
 
     observations = add_observation_year(observations)
-    action_cols = st.columns([0.16, 0.22, 0.24, 0.38])
-    if action_cols[0].button("Parametres demo", type="secondary"):
-        demo_settings_dialog(catalog, profile_names)
-    if action_cols[1].button("Cartographie des tests", type="secondary"):
-        test_cartography_dialog(thresholds)
-    if action_cols[2].button("Ancrages réglementaires", type="secondary"):
-        regulatory_anchors_dialog()
-
     scenario_label = "Fichier courant" if scenario_choice == "current_file" else catalog[scenario_choice].label
     render_scope_presentation(
         observations,
@@ -2140,6 +2318,14 @@ def main() -> None:
         expected_observation,
         threshold_profile,
     )
+    action_cols = st.columns([0.16, 0.22, 0.24, 0.38])
+    if action_cols[0].button("Parametres demo", type="secondary"):
+        demo_settings_dialog(catalog, profile_names)
+    if action_cols[1].button("Cartographie des tests", type="secondary"):
+        test_cartography_dialog(thresholds)
+    if action_cols[2].button("Ancrages réglementaires", type="secondary"):
+        regulatory_anchors_dialog()
+
     portfolios, segments, model_ids, years, aggregation_level = render_analysis_filters(observations)
 
     filtered = filter_dataframe(observations, portfolios, segments, model_ids, years)
@@ -2237,32 +2423,57 @@ def main() -> None:
 
     tabs = st.tabs([
         "Accueil",
-        "Donnees & qualite",
-        "Stabilité Rating / Score Distribution (RDS)",
+        "Données & qualité",
+        "Stabilité RDS",
         "Calibration PD",
         "Discrimination",
         "Alertes",
         "Rapport & export",
-        "Methodologie",
+        "Méthodologie",
     ])
 
     with tabs[0]:
-        st.subheader("Synthese executive")
+        render_section_header(
+            "Synthèse exécutive",
+            "Vue consolidée du périmètre filtré : niveau de risque, robustesse statistique, alertes et statut global du système de notation.",
+            "Dashboard",
+        )
         st.info(f"Scenario : {scenario_description}\n\nA observer : {expected_observation}")
         cols = st.columns(6)
-        cols[0].metric("Statut global", global_status)
-        cols[1].metric("Observations", f"{global_metrics['observations']:,}".replace(",", " "))
-        cols[2].metric("Defauts", f"{global_metrics['observed_defaults']:,}".replace(",", " "))
-        cols[3].metric("PD moyenne", format_percent(global_metrics["pd_mean"]))
-        cols[4].metric("ODR", format_percent(global_metrics["odr"]))
-        cols[5].metric("Profil seuils", threshold_profile)
+        with cols[0]:
+            render_kpi_card("Statut global", global_status, "Priorité consolidée")
+        with cols[1]:
+            render_kpi_card("Observations", f"{global_metrics['observations']:,}".replace(",", " "), "Population filtrée")
+        with cols[2]:
+            render_kpi_card("Défauts", f"{global_metrics['observed_defaults']:,}".replace(",", " "), "Horizon 12 mois")
+        with cols[3]:
+            render_kpi_card("PD moyenne", format_percent(global_metrics["pd_mean"]), "Estimation modèle")
+        with cols[4]:
+            render_kpi_card("ODR", format_percent(global_metrics["odr"]), "Défaut observé")
+        with cols[5]:
+            render_kpi_card("Profil seuils", threshold_profile, "Paramétrable")
         cols2 = st.columns(6)
-        cols2[0].metric("Calibration", combine_statuses(calibration_alerts["status"].tolist()))
-        cols2[1].metric("Discrimination", combine_statuses(discrimination_portfolio["status"].tolist()) if not discrimination_portfolio.empty else "grey")
-        cols2[2].metric("Stabilite", combine_statuses(stability_portfolio["status"].tolist()) if not stability_portfolio.empty else "grey")
-        cols2[3].metric("Alertes rouges", counts["red"])
-        cols2[4].metric("Alertes orange", counts["orange"])
-        cols2[5].metric("Alertes grises", counts["grey"])
+        with cols2[0]:
+            render_kpi_card("Calibration", combine_statuses(calibration_alerts["status"].tolist()), "PD vs défauts")
+        with cols2[1]:
+            render_kpi_card(
+                "Discrimination",
+                combine_statuses(discrimination_portfolio["status"].tolist()) if not discrimination_portfolio.empty else "grey",
+                "Pouvoir classant",
+            )
+        with cols2[2]:
+            render_kpi_card(
+                "Stabilité",
+                combine_statuses(stability_portfolio["status"].tolist()) if not stability_portfolio.empty else "grey",
+                "RDS / PSI",
+            )
+        with cols2[3]:
+            render_kpi_card("Alertes rouges", str(counts["red"]), "Investigation prioritaire")
+        with cols2[4]:
+            render_kpi_card("Alertes orange", str(counts["orange"]), "Analyse complémentaire")
+        with cols2[5]:
+            render_kpi_card("Alertes grises", str(counts["grey"]), "Non interprétable")
+        st.markdown("### Vue modèle consolidée")
         st.dataframe(display_rates(summary), use_container_width=True, hide_index=True)
 
     with tabs[1]:
