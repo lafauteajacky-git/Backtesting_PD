@@ -579,6 +579,53 @@ def inject_auria_theme() -> None:
           margin-top: 10px;
         }
 
+        .auria-status-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+          gap: 12px;
+          margin: 14px 0 20px;
+        }
+
+        .auria-status-card {
+          border: 1px solid var(--auria-line);
+          border-radius: 20px;
+          background: rgba(255,255,255,0.86);
+          box-shadow: var(--shadow-card);
+          padding: 14px 14px;
+          display: grid;
+          grid-template-columns: 12px minmax(0, 1fr) auto;
+          gap: 12px;
+          align-items: center;
+        }
+
+        .auria-status-dot {
+          width: 11px;
+          height: 44px;
+          border-radius: 999px;
+        }
+
+        .auria-status-title {
+          color: var(--auria-navy);
+          font-size: 0.95rem;
+          font-weight: 900;
+          margin-bottom: 3px;
+        }
+
+        .auria-status-message {
+          color: var(--auria-grey);
+          font-size: 0.80rem;
+          line-height: 1.35;
+        }
+
+        .auria-status-pill {
+          color: white;
+          border-radius: 999px;
+          padding: 6px 9px;
+          font-size: 0.72rem;
+          font-weight: 900;
+          text-transform: uppercase;
+        }
+
         div[data-testid="stPlotlyChart"] {
           border: 1px solid var(--auria-line);
           border-radius: 20px;
@@ -1144,6 +1191,108 @@ def status_counts(*frames: pd.DataFrame) -> dict[str, int]:
         "orange": int((statuses == "orange").sum()),
         "grey": int((statuses == "grey").sum()),
     }
+
+
+def status_distribution(*frames: pd.DataFrame) -> pd.DataFrame:
+    """Return a complete status distribution for visual executive charts."""
+    statuses = pd.concat([frame["status"] for frame in frames if not frame.empty and "status" in frame.columns], ignore_index=True)
+    if statuses.empty:
+        statuses = pd.Series(["grey"])
+    counts = statuses.value_counts().reindex(["green", "orange", "red", "grey"], fill_value=0).reset_index()
+    counts.columns = ["status", "count"]
+    return counts
+
+
+def data_quality_executive_status(dq_results: pd.DataFrame, thresholds: dict) -> str:
+    """Summarise data quality checks into one executive traffic-light status."""
+    if dq_results.empty or "failure_rate" not in dq_results.columns:
+        return "grey"
+    max_failure_rate = float(dq_results["failure_rate"].fillna(0).max())
+    if max_failure_rate == 0:
+        return "green"
+    dq_threshold = thresholds.get("data_quality", {}).get("max_error_rate", 0.01)
+    return traffic_from_rate(max_failure_rate, dq_threshold)
+
+
+def build_executive_theme_status(
+    dq_results: pd.DataFrame,
+    calibration_alerts: pd.DataFrame,
+    discrimination_alerts: pd.DataFrame,
+    stability_alerts: pd.DataFrame,
+    monotonicity_alerts: pd.DataFrame,
+    thresholds: dict,
+) -> pd.DataFrame:
+    """Build one status row per main analysis family."""
+    rows = [
+        {
+            "theme": "Data quality",
+            "status": data_quality_executive_status(dq_results, thresholds),
+            "message": "Complétude, unicité et cohérence des champs clés.",
+        },
+        {
+            "theme": "Calibration PD",
+            "status": first_status(calibration_alerts),
+            "message": "Comparaison entre PD estimée et défauts observés.",
+        },
+        {
+            "theme": "Discrimination",
+            "status": first_status(discrimination_alerts),
+            "message": "Pouvoir de séparation défauts / non-défauts.",
+        },
+        {
+            "theme": "Stabilité RDS",
+            "status": first_status(stability_alerts),
+            "message": "Stabilité des distributions entre périodes.",
+        },
+        {
+            "theme": "Ordonnancement",
+            "status": first_status(monotonicity_alerts),
+            "message": "Monotonie des défauts observés par grade.",
+        },
+    ]
+    return pd.DataFrame(rows)
+
+
+def build_portfolio_executive_view(observations: pd.DataFrame) -> pd.DataFrame:
+    """Compute compact portfolio-level PD/ODR values for the executive dashboard."""
+    rows = []
+    if "portfolio" not in observations.columns:
+        return pd.DataFrame(rows)
+    for portfolio, group in observations.groupby("portfolio", dropna=False):
+        metrics = portfolio_metrics(group)
+        rows.append(
+            {
+                "portfolio": portfolio,
+                "observations": metrics["observations"],
+                "defaults": metrics["observed_defaults"],
+                "PD moyenne": metrics["pd_mean"],
+                "ODR": metrics["odr"],
+                "Défauts attendus": metrics["expected_defaults"],
+                "Défauts observés": metrics["observed_defaults"],
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def render_status_strip(theme_status: pd.DataFrame) -> None:
+    """Render a compact visual strip of traffic-light statuses."""
+    cards = []
+    for _, row in theme_status.iterrows():
+        status = str(row["status"])
+        color = STATUS_COLORS.get(status, STATUS_COLORS["grey"])
+        cards.append(
+            f"""
+            <div class="auria-status-card">
+              <div class="auria-status-dot" style="background:{color}"></div>
+              <div>
+                <div class="auria-status-title">{html.escape(str(row["theme"]))}</div>
+                <div class="auria-status-message">{html.escape(str(row["message"]))}</div>
+              </div>
+              <div class="auria-status-pill" style="background:{color}">{html.escape(status)}</div>
+            </div>
+            """
+        )
+    st.markdown(f'<div class="auria-status-grid">{"".join(cards)}</div>', unsafe_allow_html=True)
 
 
 def filter_dataframe(frame: pd.DataFrame, portfolios, segments, model_ids, years) -> pd.DataFrame:
@@ -2411,6 +2560,16 @@ def main() -> None:
     summary = build_model_summary(filtered, calibration_alerts, discrimination_portfolio, stability_portfolio, current_period)
     global_status = combine_statuses(summary["statut_global"].tolist()) if not summary.empty else "grey"
     counts = status_counts(calibration_alerts, discrimination_portfolio, stability_portfolio, monotonicity_alerts)
+    status_dist = status_distribution(calibration_alerts, discrimination_portfolio, stability_portfolio, monotonicity_alerts)
+    executive_theme_status = build_executive_theme_status(
+        dq_results,
+        calibration_alerts,
+        discrimination_portfolio,
+        stability_portfolio,
+        monotonicity_alerts,
+        thresholds,
+    )
+    executive_portfolio_view = build_portfolio_executive_view(filtered)
     test_mapping = build_test_mapping()
     findings = generate_validation_findings(
         calibration_alerts.assign(test_family="Calibration"),
@@ -2438,43 +2597,121 @@ def main() -> None:
             "Vue consolidée du périmètre filtré : niveau de risque, robustesse statistique, alertes et statut global du système de notation.",
             "Dashboard",
         )
-        st.info(f"Scenario : {scenario_description}\n\nA observer : {expected_observation}")
-        cols = st.columns(6)
-        with cols[0]:
-            render_kpi_card("Statut global", global_status, "Priorité consolidée")
-        with cols[1]:
-            render_kpi_card("Observations", f"{global_metrics['observations']:,}".replace(",", " "), "Population filtrée")
-        with cols[2]:
-            render_kpi_card("Défauts", f"{global_metrics['observed_defaults']:,}".replace(",", " "), "Horizon 12 mois")
-        with cols[3]:
-            render_kpi_card("PD moyenne", format_percent(global_metrics["pd_mean"]), "Estimation modèle")
-        with cols[4]:
-            render_kpi_card("ODR", format_percent(global_metrics["odr"]), "Défaut observé")
-        with cols[5]:
-            render_kpi_card("Profil seuils", threshold_profile, "Paramétrable")
-        cols2 = st.columns(6)
-        with cols2[0]:
-            render_kpi_card("Calibration", combine_statuses(calibration_alerts["status"].tolist()), "PD vs défauts")
-        with cols2[1]:
+        st.info(f"Scénario : {scenario_description}\n\nÀ observer : {expected_observation}")
+
+        headline_cols = st.columns([1.05, 1, 1])
+        with headline_cols[0]:
+            render_kpi_card("Statut global", global_status, "Lecture consolidée du périmètre filtré")
+        with headline_cols[1]:
             render_kpi_card(
-                "Discrimination",
-                combine_statuses(discrimination_portfolio["status"].tolist()) if not discrimination_portfolio.empty else "grey",
-                "Pouvoir classant",
+                "Population analysée",
+                f"{global_metrics['observations']:,}".replace(",", " "),
+                f"{global_metrics['observed_defaults']:,}".replace(",", " ") + " défauts observés",
             )
-        with cols2[2]:
+        with headline_cols[2]:
             render_kpi_card(
-                "Stabilité",
-                combine_statuses(stability_portfolio["status"].tolist()) if not stability_portfolio.empty else "grey",
-                "RDS / PSI",
+                "Niveau de risque",
+                f"PD {format_percent(global_metrics['pd_mean'])}",
+                f"ODR {format_percent(global_metrics['odr'])} | profil {threshold_profile}",
             )
-        with cols2[3]:
-            render_kpi_card("Alertes rouges", str(counts["red"]), "Investigation prioritaire")
-        with cols2[4]:
-            render_kpi_card("Alertes orange", str(counts["orange"]), "Analyse complémentaire")
-        with cols2[5]:
-            render_kpi_card("Alertes grises", str(counts["grey"]), "Non interprétable")
-        st.markdown("### Vue modèle consolidée")
-        st.dataframe(display_rates(summary), use_container_width=True, hide_index=True)
+
+        st.markdown("### Lecture rapide des statuts")
+        render_status_strip(executive_theme_status)
+
+        visual_cols = st.columns([0.9, 1.25])
+        with visual_cols[0]:
+            alert_chart = status_dist[status_dist["count"] > 0].copy()
+            if alert_chart.empty:
+                alert_chart = pd.DataFrame([{"status": "green", "count": 1}])
+            fig_alerts = px.pie(
+                alert_chart,
+                names="status",
+                values="count",
+                hole=0.62,
+                color="status",
+                color_discrete_map=STATUS_COLORS,
+                title="Répartition des traffic lights",
+            )
+            fig_alerts.update_traces(textposition="inside", textinfo="label+value")
+            fig_alerts.update_layout(showlegend=False)
+            st.plotly_chart(fig_alerts, use_container_width=True)
+
+        with visual_cols[1]:
+            theme_chart = executive_theme_status.copy()
+            theme_chart["score"] = 1
+            fig_theme = px.bar(
+                theme_chart,
+                x="score",
+                y="theme",
+                color="status",
+                orientation="h",
+                color_discrete_map=STATUS_COLORS,
+                labels={"score": "", "theme": "Thème", "status": "Statut"},
+                title="Statut par domaine d'analyse",
+            )
+            fig_theme.update_layout(showlegend=False, xaxis_visible=False, height=360)
+            st.plotly_chart(fig_theme, use_container_width=True)
+
+        st.markdown("### Risque estimé vs risque observé")
+        if not executive_portfolio_view.empty:
+            risk_chart = executive_portfolio_view.melt(
+                id_vars=["portfolio"],
+                value_vars=["PD moyenne", "ODR"],
+                var_name="indicateur",
+                value_name="taux",
+            )
+            st.plotly_chart(
+                px.bar(
+                    risk_chart,
+                    x="portfolio",
+                    y="taux",
+                    color="indicateur",
+                    barmode="group",
+                    text_auto=".2%",
+                    labels={"portfolio": "Portefeuille", "taux": "Taux", "indicateur": "Indicateur"},
+                    title="PD moyenne vs taux de défaut observé par portefeuille",
+                ),
+                use_container_width=True,
+            )
+
+            default_chart = executive_portfolio_view.melt(
+                id_vars=["portfolio"],
+                value_vars=["Défauts attendus", "Défauts observés"],
+                var_name="indicateur",
+                value_name="nombre",
+            )
+            st.plotly_chart(
+                px.bar(
+                    default_chart,
+                    x="portfolio",
+                    y="nombre",
+                    color="indicateur",
+                    barmode="group",
+                    text_auto=".1f",
+                    labels={"portfolio": "Portefeuille", "nombre": "Nombre de défauts", "indicateur": "Indicateur"},
+                    title="Défauts attendus vs défauts observés par portefeuille",
+                ),
+                use_container_width=True,
+            )
+
+        st.markdown("### Points d'attention prioritaires")
+        if not findings.empty and "niveau_de_severite" in findings.columns:
+            priority_findings = findings[
+                findings["niveau_de_severite"].isin(["Haute", "Moyenne", "À qualifier", "Ã€ qualifier"])
+            ]
+        else:
+            priority_findings = pd.DataFrame()
+        if priority_findings.empty:
+            st.success("Aucun finding prioritaire n'est remonté sur le périmètre filtré.")
+        else:
+            display_columns = [
+                column for column in ["finding_id", "theme", "perimetre", "constat", "niveau_de_severite", "recommandation"]
+                if column in priority_findings.columns
+            ]
+            st.dataframe(priority_findings[display_columns].head(6), use_container_width=True, hide_index=True)
+
+        with st.expander("Voir la table de synthèse modèle détaillée"):
+            st.dataframe(display_rates(summary), use_container_width=True, hide_index=True)
 
     with tabs[1]:
         st.subheader("Donnees & qualite")
