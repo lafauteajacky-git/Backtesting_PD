@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Local configuration and secrets
+.env
+.env.*
+*.env
+secrets.toml
+.streamlit/secrets.toml
+*.pem
+*.key
+*.p12
+
+# Generated data, reports and local releases
+data/generated/*.csv
+releases/
+*.zip
+*.log
+demo_backtesting_reglementaire.html
+PowerShell Lancement Backtesting.txt
+Cahier Des Charges Mvp Backtesting Pd.docx
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/

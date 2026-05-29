@@ -1,0 +1,111 @@
+data_quality:
+  max_error_rate: 0.01
+  expected_performance_window_months: 12
+
+pd_backtesting:
+  confidence_level: 0.95
+  status:
+    grey_min_observations: 30
+    grey_min_defaults: 1
+    orange_abs_calibration_gap: 0.015
+    red_abs_calibration_gap: 0.03
+    orange_p_value: 0.05
+    red_p_value: 0.01
+
+calibration_tests:
+  binomial:
+    alpha_orange: 0.05
+    alpha_red: 0.01
+    default_test_type: one_sided_high
+    confidence_interval_method: wilson
+
+minimum_volume:
+  min_observations: 30
+  min_defaults: 5
+  min_non_defaults: 30
+
+discrimination:
+  auc_orange: 0.70
+  auc_red: 0.60
+  gini_orange: 0.40
+  gini_red: 0.20
+  ks_orange: 0.30
+  ks_red: 0.20
+
+stability:
+  psi_orange: 0.10
+  psi_red: 0.25
+
+rds:
+  psi_orange: 0.10
+  psi_red: 0.25
+
+eligibility:
+  exclusion_rate_orange: 0.05
+  exclusion_rate_red: 0.15
+
+migration:
+  downgrade_rate_orange: 0.25
+  downgrade_rate_red: 0.40
+  large_migration_rate_orange: 0.10
+  large_migration_rate_red: 0.20
+
+pd_adjustments:
+  impact_orange: 0.01
+  impact_red: 0.03
+
+low_default:
+  min_observations: 30
+  min_defaults: 5
+
+population_shift:
+  share_change_orange: 0.10
+  share_change_red: 0.20
+
+exclusions:
+  rate_orange: 0.05
+  rate_red: 0.15
+
+monotonicity:
+  min_observations_per_grade: 30
+  min_defaults_total: 5
+  material_odr_decrease: 0.01
+
+threshold_profiles:
+  standard:
+    calibration_tests:
+      binomial:
+        alpha_orange: 0.05
+        alpha_red: 0.01
+  conservative:
+    calibration_tests:
+      binomial:
+        alpha_orange: 0.10
+        alpha_red: 0.05
+    discrimination:
+      auc_orange: 0.72
+      auc_red: 0.62
+    stability:
+      psi_orange: 0.08
+      psi_red: 0.20
+    monotonicity:
+      material_odr_decrease: 0.005
+  tolerant:
+    calibration_tests:
+      binomial:
+        alpha_orange: 0.025
+        alpha_red: 0.01
+    discrimination:
+      auc_orange: 0.68
+      auc_red: 0.58
+    stability:
+      psi_orange: 0.15
+      psi_red: 0.30
+    monotonicity:
+      material_odr_decrease: 0.02
+
+portfolios:
+  retail:
+    min_observations: 30000
+  corporate:
+    min_observations: 5000
