@@ -1281,16 +1281,14 @@ def render_status_strip(theme_status: pd.DataFrame) -> None:
         status = str(row["status"])
         color = STATUS_COLORS.get(status, STATUS_COLORS["grey"])
         cards.append(
-            f"""
-            <div class="auria-status-card">
-              <div class="auria-status-dot" style="background:{color}"></div>
-              <div>
-                <div class="auria-status-title">{html.escape(str(row["theme"]))}</div>
-                <div class="auria-status-message">{html.escape(str(row["message"]))}</div>
-              </div>
-              <div class="auria-status-pill" style="background:{color}">{html.escape(status)}</div>
-            </div>
-            """
+            '<div class="auria-status-card">'
+            f'<div class="auria-status-dot" style="background:{color}"></div>'
+            "<div>"
+            f'<div class="auria-status-title">{html.escape(str(row["theme"]))}</div>'
+            f'<div class="auria-status-message">{html.escape(str(row["message"]))}</div>'
+            "</div>"
+            f'<div class="auria-status-pill" style="background:{color}">{html.escape(status)}</div>'
+            "</div>"
         )
     st.markdown(f'<div class="auria-status-grid">{"".join(cards)}</div>', unsafe_allow_html=True)
 
